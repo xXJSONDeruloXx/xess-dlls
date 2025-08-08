@@ -77,9 +77,12 @@ jobs:
       id: create_zip
       run: |
         cd extracted-dlls
+        # Copy the license file into the DLL directory
+        cp ../INTEL_LICENSE.txt ./
+        
         ZIP_NAME="xess-dlls-v2.1.0.zip"
         echo "Creating ZIP archive: $ZIP_NAME"
-        zip -r "../$ZIP_NAME" *.dll
+        zip -r "../$ZIP_NAME" *.dll INTEL_LICENSE.txt
         cd ..
         
         echo "ZIP archive created:"
@@ -149,11 +152,20 @@ jobs:
         
         ## Description
         
-        - **$ZIP_NAME**: Complete package containing all XeSS DLL files
+        - **$ZIP_NAME**: Complete package containing all XeSS DLL files and license
+        - **INTEL_LICENSE.txt**: Intel Simplified Software License (required for redistribution)
         - **libxell.dll**: XeSS Low Latency library
         - **libxess.dll**: XeSS Super Resolution core library
         - **libxess_dx11.dll**: XeSS DirectX 11 implementation
         - **libxess_fg.dll**: XeSS Frame Generation library
+        
+        ## License Notice
+        
+        These DLL files are distributed under the Intel Simplified Software License (Version October 2022). 
+        By downloading and using these files, you agree to comply with the license terms included in `INTEL_LICENSE.txt`.
+        
+        **Important**: The license requires that redistributions must reproduce the copyright notice and license terms. 
+        The license file is included in the ZIP archive and as a separate download.
         
         Generated automatically from Intel XeSS SDK v2.1.0.
         EOF
@@ -182,6 +194,16 @@ jobs:
         asset_path: ./${{ steps.create_zip.outputs.zip_name }}
         asset_name: ${{ steps.create_zip.outputs.zip_name }}
         asset_content_type: application/zip
+        
+    - name: Upload Intel License
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./INTEL_LICENSE.txt
+        asset_name: INTEL_LICENSE.txt
+        asset_content_type: text/plain
         
     - name: Upload libxell.dll
       uses: actions/upload-release-asset@v1

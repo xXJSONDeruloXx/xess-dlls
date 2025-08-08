@@ -92,4 +92,17 @@ The GitHub Actions workflow:
 
 ## License
 
-This repository contains workflow automation only. The extracted DLL files are subject to Intel's XeSS SDK license terms. Please refer to the [original XeSS repository](https://github.com/intel/xess) for licensing information.
+This repository contains workflow automation only. The extracted DLL files are subject to Intel's XeSS SDK license terms. 
+
+**Important**: These DLL files are distributed under the **Intel Simplified Software License (Version October 2022)**. The license file (`INTEL_LICENSE.txt`) is included in:
+- This repository
+- Every release as a separate download
+- The ZIP archive containing all DLLs
+
+By downloading and using these DLL files, you agree to comply with Intel's license terms. Please refer to the [original XeSS repository](https://github.com/intel/xess) for additional information.
+
+### Key License Requirements:
+- Redistributions must include the copyright notice and license terms
+- No reverse engineering, decompilation, or disassembly permitted
+- No modification or alteration of the software allowed
+- Software provided "as is" without warranty
