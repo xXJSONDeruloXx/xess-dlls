@@ -30,19 +30,26 @@ jobs:
     - name: Extract SDK and get DLLs
       run: |
         echo "Extracting XeSS SDK..."
-        unzip -q XeSS_SDK_2.1.0.zip
+        # Extract to a subdirectory to avoid conflicts with repository files
+        mkdir -p xess-sdk-temp
+        cd xess-sdk-temp
+        unzip -q ../XeSS_SDK_2.1.0.zip
+        cd ..
         
         echo "Creating DLL directory..."
         mkdir -p extracted-dlls
         
         echo "Copying required DLLs..."
-        cp bin/libxell.dll extracted-dlls/
-        cp bin/libxess.dll extracted-dlls/
-        cp bin/libxess_dx11.dll extracted-dlls/
-        cp bin/libxess_fg.dll extracted-dlls/
+        cp xess-sdk-temp/bin/libxell.dll extracted-dlls/
+        cp xess-sdk-temp/bin/libxess.dll extracted-dlls/
+        cp xess-sdk-temp/bin/libxess_dx11.dll extracted-dlls/
+        cp xess-sdk-temp/bin/libxess_fg.dll extracted-dlls/
         
         echo "Verifying DLLs exist:"
         ls -la extracted-dlls/
+        
+        echo "Cleaning up temporary extraction directory..."
+        rm -rf xess-sdk-temp
         
     - name: Calculate SHA256 hashes
       id: hashes
