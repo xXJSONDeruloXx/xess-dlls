@@ -1,0 +1,198 @@
+name: Extract XeSS DLLs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  extract-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set timestamp
+      id: timestamp
+      run: |
+        TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
+        echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+        echo "Timestamp: $TIMESTAMP"
+        
+    - name: Download XeSS SDK
+      run: |
+        echo "Downloading XeSS SDK v2.1.0..."
+        wget -O XeSS_SDK_2.1.0.zip https://github.com/intel/xess/releases/download/v2.1.0/XeSS_SDK_2.1.0.zip
+        
+    - name: Verify checksum
+      run: |
+        echo "dbcd513934c8b9b4aa7ae6897c57ce16110ca4dcb229fe6f45a9b6d4dac18253  XeSS_SDK_2.1.0.zip" | sha256sum -c
+        
+    - name: Extract SDK and get DLLs
+      run: |
+        echo "Extracting XeSS SDK..."
+        unzip -q XeSS_SDK_2.1.0.zip
+        
+        echo "Creating DLL directory..."
+        mkdir -p extracted-dlls
+        
+        echo "Copying required DLLs..."
+        cp bin/libxell.dll extracted-dlls/
+        cp bin/libxess.dll extracted-dlls/
+        cp bin/libxess_dx11.dll extracted-dlls/
+        cp bin/libxess_fg.dll extracted-dlls/
+        
+        echo "Verifying DLLs exist:"
+        ls -la extracted-dlls/
+        
+    - name: Calculate SHA256 hashes
+      id: hashes
+      run: |
+        cd extracted-dlls
+        echo "Calculating SHA256 hashes for DLLs..."
+        
+        LIBXELL_HASH=$(sha256sum libxell.dll | cut -d' ' -f1)
+        LIBXESS_HASH=$(sha256sum libxess.dll | cut -d' ' -f1)
+        LIBXESS_DX11_HASH=$(sha256sum libxess_dx11.dll | cut -d' ' -f1)
+        LIBXESS_FG_HASH=$(sha256sum libxess_fg.dll | cut -d' ' -f1)
+        
+        echo "libxell_hash=$LIBXELL_HASH" >> $GITHUB_OUTPUT
+        echo "libxess_hash=$LIBXESS_HASH" >> $GITHUB_OUTPUT
+        echo "libxess_dx11_hash=$LIBXESS_DX11_HASH" >> $GITHUB_OUTPUT
+        echo "libxess_fg_hash=$LIBXESS_FG_HASH" >> $GITHUB_OUTPUT
+        
+        echo "Hashes calculated:"
+        echo "libxell.dll: $LIBXELL_HASH"
+        echo "libxess.dll: $LIBXESS_HASH"
+        echo "libxess_dx11.dll: $LIBXESS_DX11_HASH"
+        echo "libxess_fg.dll: $LIBXESS_FG_HASH"
+        
+    - name: Create release description
+      id: description
+      run: |
+        TIMESTAMP="${{ steps.timestamp.outputs.timestamp }}"
+        REPO_URL="https://github.com/${{ github.repository }}"
+        RUN_URL="$REPO_URL/actions/runs/${{ github.run_id }}"
+        
+        cat > release_description.md << 'EOF'
+        # XeSS DLLs v2.1.0
+        
+        This release contains the core DLL files extracted from Intel XeSS SDK v2.1.0.
+        
+        ## Source
+        - **Original XeSS SDK Release**: https://github.com/intel/xess/releases/tag/v2.1.0
+        - **GitHub Action Run**: $RUN_URL
+        
+        ## Artifacts
+        
+        ```json
+        {
+          "remote_binary": [
+            {
+              "name": "libxell.dll",
+              "url": "$REPO_URL/releases/download/$TIMESTAMP/libxell.dll",
+              "sha256hash": "${{ steps.hashes.outputs.libxell_hash }}"
+            },
+            {
+              "name": "libxess.dll", 
+              "url": "$REPO_URL/releases/download/$TIMESTAMP/libxess.dll",
+              "sha256hash": "${{ steps.hashes.outputs.libxess_hash }}"
+            },
+            {
+              "name": "libxess_dx11.dll",
+              "url": "$REPO_URL/releases/download/$TIMESTAMP/libxess_dx11.dll", 
+              "sha256hash": "${{ steps.hashes.outputs.libxess_dx11_hash }}"
+            },
+            {
+              "name": "libxess_fg.dll",
+              "url": "$REPO_URL/releases/download/$TIMESTAMP/libxess_fg.dll",
+              "sha256hash": "${{ steps.hashes.outputs.libxess_fg_hash }}"
+            }
+          ]
+        }
+        ```
+        
+        ## Description
+        
+        - **libxell.dll**: XeSS Low Latency library
+        - **libxess.dll**: XeSS Super Resolution core library
+        - **libxess_dx11.dll**: XeSS DirectX 11 implementation
+        - **libxess_fg.dll**: XeSS Frame Generation library
+        
+        Generated automatically from Intel XeSS SDK v2.1.0.
+        EOF
+        
+        # Replace variables in the description
+        sed -i "s|\$RUN_URL|$RUN_URL|g" release_description.md
+        sed -i "s|\$REPO_URL|$REPO_URL|g" release_description.md
+        sed -i "s|\$TIMESTAMP|$TIMESTAMP|g" release_description.md
+        sed -i "s|\${{ steps.hashes.outputs.libxell_hash }}|${{ steps.hashes.outputs.libxell_hash }}|g" release_description.md
+        sed -i "s|\${{ steps.hashes.outputs.libxess_hash }}|${{ steps.hashes.outputs.libxess_hash }}|g" release_description.md
+        sed -i "s|\${{ steps.hashes.outputs.libxess_dx11_hash }}|${{ steps.hashes.outputs.libxess_dx11_hash }}|g" release_description.md
+        sed -i "s|\${{ steps.hashes.outputs.libxess_fg_hash }}|${{ steps.hashes.outputs.libxess_fg_hash }}|g" release_description.md
+        
+        echo "Release description created:"
+        cat release_description.md
+        
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.timestamp.outputs.timestamp }}
+        release_name: XeSS DLLs ${{ steps.timestamp.outputs.timestamp }}
+        body_path: release_description.md
+        draft: false
+        prerelease: false
+        
+    - name: Upload libxell.dll
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./extracted-dlls/libxell.dll
+        asset_name: libxell.dll
+        asset_content_type: application/octet-stream
+        
+    - name: Upload libxess.dll
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./extracted-dlls/libxess.dll
+        asset_name: libxess.dll
+        asset_content_type: application/octet-stream
+        
+    - name: Upload libxess_dx11.dll
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./extracted-dlls/libxess_dx11.dll
+        asset_name: libxess_dx11.dll
+        asset_content_type: application/octet-stream
+        
+    - name: Upload libxess_fg.dll
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./extracted-dlls/libxess_fg.dll
+        asset_name: libxess_fg.dll
+        asset_content_type: application/octet-stream
+        
+    - name: Output release information
+      run: |
+        echo "Release created successfully!"
+        echo "Release URL: ${{ steps.create_release.outputs.html_url }}"
+        echo "Tag: ${{ steps.timestamp.outputs.timestamp }}"
+        echo ""
+        echo "Uploaded DLL files:"
+        echo "- libxell.dll (SHA256: ${{ steps.hashes.outputs.libxell_hash }})"
+        echo "- libxess.dll (SHA256: ${{ steps.hashes.outputs.libxess_hash }})"
+        echo "- libxess_dx11.dll (SHA256: ${{ steps.hashes.outputs.libxess_dx11_hash }})"
+        echo "- libxess_fg.dll (SHA256: ${{ steps.hashes.outputs.libxess_fg_hash }})"
