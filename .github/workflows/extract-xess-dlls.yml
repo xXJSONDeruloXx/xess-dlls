@@ -73,6 +73,24 @@ jobs:
         echo "libxess_dx11.dll: $LIBXESS_DX11_HASH"
         echo "libxess_fg.dll: $LIBXESS_FG_HASH"
         
+    - name: Create ZIP archive of all DLLs
+      id: create_zip
+      run: |
+        cd extracted-dlls
+        ZIP_NAME="xess-dlls-v2.1.0.zip"
+        echo "Creating ZIP archive: $ZIP_NAME"
+        zip -r "../$ZIP_NAME" *.dll
+        cd ..
+        
+        echo "ZIP archive created:"
+        ls -la "$ZIP_NAME"
+        
+        # Calculate hash for the ZIP file
+        ZIP_HASH=$(sha256sum "$ZIP_NAME" | cut -d' ' -f1)
+        echo "zip_hash=$ZIP_HASH" >> $GITHUB_OUTPUT
+        echo "zip_name=$ZIP_NAME" >> $GITHUB_OUTPUT
+        echo "ZIP hash: $ZIP_HASH"
+        
     - name: Create release description
       id: description
       run: |
@@ -83,6 +101,8 @@ jobs:
         LIBXESS_HASH="${{ steps.hashes.outputs.libxess_hash }}"
         LIBXESS_DX11_HASH="${{ steps.hashes.outputs.libxess_dx11_hash }}"
         LIBXESS_FG_HASH="${{ steps.hashes.outputs.libxess_fg_hash }}"
+        ZIP_HASH="${{ steps.create_zip.outputs.zip_hash }}"
+        ZIP_NAME="${{ steps.create_zip.outputs.zip_name }}"
         
         cat > release_description.md << EOF
         # XeSS DLLs v2.1.0
@@ -98,6 +118,11 @@ jobs:
         \`\`\`json
         {
           "remote_binary": [
+            {
+              "name": "$ZIP_NAME",
+              "url": "$REPO_URL/releases/download/$TIMESTAMP/$ZIP_NAME",
+              "sha256hash": "$ZIP_HASH"
+            },
             {
               "name": "libxell.dll",
               "url": "$REPO_URL/releases/download/$TIMESTAMP/libxell.dll",
@@ -124,6 +149,7 @@ jobs:
         
         ## Description
         
+        - **$ZIP_NAME**: Complete package containing all XeSS DLL files
         - **libxell.dll**: XeSS Low Latency library
         - **libxess.dll**: XeSS Super Resolution core library
         - **libxess_dx11.dll**: XeSS DirectX 11 implementation
@@ -146,6 +172,16 @@ jobs:
         body_path: release_description.md
         draft: false
         prerelease: false
+        
+    - name: Upload ZIP archive
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./${{ steps.create_zip.outputs.zip_name }}
+        asset_name: ${{ steps.create_zip.outputs.zip_name }}
+        asset_content_type: application/zip
         
     - name: Upload libxell.dll
       uses: actions/upload-release-asset@v1
@@ -193,7 +229,8 @@ jobs:
         echo "Release URL: ${{ steps.create_release.outputs.html_url }}"
         echo "Tag: ${{ steps.timestamp.outputs.timestamp }}"
         echo ""
-        echo "Uploaded DLL files:"
+        echo "Uploaded files:"
+        echo "- ${{ steps.create_zip.outputs.zip_name }} (SHA256: ${{ steps.create_zip.outputs.zip_hash }})"
         echo "- libxell.dll (SHA256: ${{ steps.hashes.outputs.libxell_hash }})"
         echo "- libxess.dll (SHA256: ${{ steps.hashes.outputs.libxess_hash }})"
         echo "- libxess_dx11.dll (SHA256: ${{ steps.hashes.outputs.libxess_dx11_hash }})"
