@@ -79,8 +79,12 @@ jobs:
         TIMESTAMP="${{ steps.timestamp.outputs.timestamp }}"
         REPO_URL="https://github.com/${{ github.repository }}"
         RUN_URL="$REPO_URL/actions/runs/${{ github.run_id }}"
+        LIBXELL_HASH="${{ steps.hashes.outputs.libxell_hash }}"
+        LIBXESS_HASH="${{ steps.hashes.outputs.libxess_hash }}"
+        LIBXESS_DX11_HASH="${{ steps.hashes.outputs.libxess_dx11_hash }}"
+        LIBXESS_FG_HASH="${{ steps.hashes.outputs.libxess_fg_hash }}"
         
-        cat > release_description.md << 'EOF'
+        cat > release_description.md << EOF
         # XeSS DLLs v2.1.0
         
         This release contains the core DLL files extracted from Intel XeSS SDK v2.1.0.
@@ -91,32 +95,32 @@ jobs:
         
         ## Artifacts
         
-        ```json
+        \`\`\`json
         {
           "remote_binary": [
             {
               "name": "libxell.dll",
               "url": "$REPO_URL/releases/download/$TIMESTAMP/libxell.dll",
-              "sha256hash": "${{ steps.hashes.outputs.libxell_hash }}"
+              "sha256hash": "$LIBXELL_HASH"
             },
             {
               "name": "libxess.dll", 
               "url": "$REPO_URL/releases/download/$TIMESTAMP/libxess.dll",
-              "sha256hash": "${{ steps.hashes.outputs.libxess_hash }}"
+              "sha256hash": "$LIBXESS_HASH"
             },
             {
               "name": "libxess_dx11.dll",
               "url": "$REPO_URL/releases/download/$TIMESTAMP/libxess_dx11.dll", 
-              "sha256hash": "${{ steps.hashes.outputs.libxess_dx11_hash }}"
+              "sha256hash": "$LIBXESS_DX11_HASH"
             },
             {
               "name": "libxess_fg.dll",
               "url": "$REPO_URL/releases/download/$TIMESTAMP/libxess_fg.dll",
-              "sha256hash": "${{ steps.hashes.outputs.libxess_fg_hash }}"
+              "sha256hash": "$LIBXESS_FG_HASH"
             }
           ]
         }
-        ```
+        \`\`\`
         
         ## Description
         
@@ -127,15 +131,6 @@ jobs:
         
         Generated automatically from Intel XeSS SDK v2.1.0.
         EOF
-        
-        # Replace variables in the description
-        sed -i "s|\$RUN_URL|$RUN_URL|g" release_description.md
-        sed -i "s|\$REPO_URL|$REPO_URL|g" release_description.md
-        sed -i "s|\$TIMESTAMP|$TIMESTAMP|g" release_description.md
-        sed -i "s|\${{ steps.hashes.outputs.libxell_hash }}|${{ steps.hashes.outputs.libxell_hash }}|g" release_description.md
-        sed -i "s|\${{ steps.hashes.outputs.libxess_hash }}|${{ steps.hashes.outputs.libxess_hash }}|g" release_description.md
-        sed -i "s|\${{ steps.hashes.outputs.libxess_dx11_hash }}|${{ steps.hashes.outputs.libxess_dx11_hash }}|g" release_description.md
-        sed -i "s|\${{ steps.hashes.outputs.libxess_fg_hash }}|${{ steps.hashes.outputs.libxess_fg_hash }}|g" release_description.md
         
         echo "Release description created:"
         cat release_description.md
